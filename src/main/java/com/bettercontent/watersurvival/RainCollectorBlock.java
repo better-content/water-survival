@@ -100,6 +100,10 @@ public final class RainCollectorBlock extends Block {
         if (level.isClientSide) return InteractionResult.SUCCESS;
         WaterPurity.addPurity(filled, pos, level);
         player.setItemInHand(hand, ItemUtils.createFilledResult(held, player, filled));
+        if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer
+                && WaterPurity.getPurity(filled) < WaterPurity.MAX_PURITY) {
+            ThreadsBridge.unsafeCollected(serverPlayer);
+        }
         consumeCharge(level, pos, state);
         level.playSound(null, pos, SoundEvents.BOTTLE_FILL, SoundSource.BLOCKS, 1.0F, 1.0F);
         return InteractionResult.CONSUME;

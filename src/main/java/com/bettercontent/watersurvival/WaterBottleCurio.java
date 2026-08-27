@@ -71,6 +71,7 @@ public final class WaterBottleCurio {
                 if (thirstRestored > 0) {
                     thirst.drink(player, thirstRestored, quenchedRestored);
                     thirst.updateThirstData(player);
+                    if (WaterPurity.getPurity(stack) == WaterPurity.MAX_PURITY) ThreadsBridge.purifiedDrunk(player);
                 }
                 setBottleFraction(player, fraction);
                 if (bottlesConsumed > 0) {
