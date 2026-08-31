@@ -77,7 +77,6 @@ public final class WaterBottleCurio {
                 if (bottlesConsumed > 0) {
                     slot.getStacks().setStackInSlot(0, remainingBottles);
                     returnEmptyBottles(player, bottlesConsumed);
-                    triggerQuestCriterion(player, "water_curio_drink");
                 }
             });
         }));
@@ -122,15 +121,4 @@ public final class WaterBottleCurio {
                 && WaterPurity.isWaterFilledContainer(stack);
     }
 
-    private static void triggerQuestCriterion(ServerPlayer player, String criterion) {
-        try {
-            Class.forName("com.bettercontent.quests.QuestCriteria")
-                    .getMethod("trigger", ServerPlayer.class, String.class)
-                    .invoke(null, player, criterion);
-        } catch (ClassNotFoundException ignored) {
-            // Better Content Quests is optional.
-        } catch (ReflectiveOperationException failure) {
-            throw new IllegalStateException("Could not trigger optional quest criterion", failure);
-        }
-    }
 }
