@@ -47,6 +47,9 @@ minecraft {
 
 repositories {
     maven("https://maven.minecraftforge.net")
+    maven("https://maven.createmod.net")
+    maven("https://maven.ithundxr.dev/mirror")
+    maven("https://maven.tterrag.com/")
     maven("https://harleyoconnor.com/maven")
     maven("https://repo.spongepowered.org/repository/maven-public/")
     maven("https://maven.llamalad7.mixinextras.org/releases/")
@@ -57,6 +60,12 @@ repositories {
 
 dependencies {
     minecraft("net.minecraftforge:forge:${property("minecraft_version")}-${property("forge_version")}")
+    implementation(fg.deobf("com.simibubi.create:create-${property("minecraft_version")}:6.0.8-291:slim"))
+    implementation(fg.deobf("net.createmod.ponder:Ponder-Forge-${property("minecraft_version")}:1.0.92"))
+    compileOnly(fg.deobf("dev.engine-room.flywheel:flywheel-forge-api-${property("minecraft_version")}:1.0.5"))
+    runtimeOnly(fg.deobf("dev.engine-room.flywheel:flywheel-forge-${property("minecraft_version")}:1.0.5"))
+    implementation(fg.deobf("com.tterrag.registrate:Registrate:MC1.20-1.3.3"))
+    implementation(jarJar("io.github.llamalad7:mixinextras-forge:[0.5.0,0.6.0)")!!)
     compileOnly(fg.deobf("curse.maven:hyle-609850:7736352"))
     compileOnly(fg.deobf("curse.maven:thirst-was-taken-679270:6660408"))
     compileOnly(fg.deobf("curse.maven:cold-sweat-506194:7893262"))
@@ -87,20 +96,9 @@ dependencies {
     runtimeOnly(fg.deobf("curse.maven:thirst-was-taken-679270:6660408"))
     runtimeOnly(fg.deobf("curse.maven:curios-api-309927:6418456"))
     runtimeOnly(fg.deobf("curse.maven:architectury-api-419699:5137938"))
-    runtimeOnly(fg.deobf("curse.maven:ftb-library-forge-404465:7296748"))
-    runtimeOnly(fg.deobf("curse.maven:ftb-teams-forge-404468:7499810"))
-    runtimeOnly(fg.deobf("curse.maven:ftb-filter-system-943925:6466153"))
-    runtimeOnly(fg.deobf("curse.maven:ftb-quests-forge-289412:7909594"))
-    runtimeOnly(fg.deobf("curse.maven:mantle-74924:7563777"))
-    runtimeOnly(fg.deobf("curse.maven:tinkers-construct-74072:7449219"))
-    runtimeOnly(fg.deobf("curse.maven:polymorph-388800:6450982"))
-    runtimeOnly(fg.deobf("curse.maven:ars-nouveau-401955:6688854"))
-    runtimeOnly(fg.deobf("curse.maven:realistic-block-physics-375616:6393411"))
-    runtimeOnly(fg.deobf("curse.maven:realistic-physics-1030082:6026115"))
-    runtimeOnly(fg.deobf("curse.maven:geckolib-388172:7553267"))
-    runtimeOnly(fg.deobf("curse.maven:sophisticated-core-618298:7916595"))
-    runtimeOnly(fg.deobf("curse.maven:sophisticated-storage-619320:7973265"))
-    runtimeOnly(fg.deobf("com.ferreusveritas.dynamictrees:DynamicTrees-1.20.1:1.4.9"))
+    runtimeOnly(fg.deobf("curse.maven:farmers-delight-398521:8007609"))
+    runtimeOnly(fg.deobf("curse.maven:farmers-respite-551453:5543547"))
+    runtimeOnly(fg.deobf("curse.maven:brewin-and-chewin-637808:6237884"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
     testImplementation("com.google.code.gson:gson:2.10.1")
 }
@@ -154,6 +152,7 @@ tasks.register("verifyFull") {
 
 val resetGameTestMods = tasks.register<Delete>("resetGameTestMods") {
     delete(layout.projectDirectory.dir("run-gametest/mods"))
+    delete(layout.projectDirectory.dir("run-gametest/world"))
 }
 
 val syncGameTestStructures = tasks.register<Sync>("syncGameTestStructures") {
@@ -179,5 +178,3 @@ tasks.processResources {
         expand(props)
     }
 }
-
-

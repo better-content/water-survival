@@ -6,6 +6,7 @@ import dev.ghen.thirst.content.purity.WaterPurity;
 import dev.ghen.thirst.foundation.common.capability.ModCapabilities;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
@@ -15,9 +16,11 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.alchemy.PotionUtils;
 import net.minecraft.world.item.alchemy.Potions;
+import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CampfireBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.common.util.FakePlayerFactory;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
@@ -33,6 +36,7 @@ public final class WaterSurvivalGameTests {
         final ServerLevel level = helper.getLevel();
         final BlockPos relativePos = new BlockPos(2, 200, 2);
         final BlockPos worldPos = helper.absolutePos(relativePos);
+        makeBiomeRainy(level, worldPos);
         level.setWeatherParameters(0, 1200, true, false);
         level.setRainLevel(1.0F);
         final BlockState state = RainCollectorRegistry.RAIN_COLLECTOR.get().defaultBlockState();
@@ -151,6 +155,15 @@ public final class WaterSurvivalGameTests {
 
     private static ServerPlayer fakePlayer(final GameTestHelper helper, final String name) {
         return FakePlayerFactory.get(helper.getLevel(), new GameProfile(UUID.randomUUID(), "bcf-" + name));
+    }
+
+    private static void makeBiomeRainy(final ServerLevel level, final BlockPos pos) {
+        final LevelChunk chunk = level.getChunkAt(pos);
+        final var plains = level.registryAccess().registryOrThrow(Registries.BIOME).getHolderOrThrow(Biomes.PLAINS);
+        chunk.getSection(chunk.getSectionIndex(pos.getY())).fillBiomesFromNoise(
+                (quartX, quartY, quartZ, sampler) -> plains,
+                level.getChunkSource().randomState().sampler(), 0, 0, 0);
+        chunk.setUnsaved(true);
     }
 
     private static ItemStack purifiedWaterBottles(final int count) {
