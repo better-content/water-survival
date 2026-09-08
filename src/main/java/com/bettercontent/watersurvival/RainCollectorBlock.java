@@ -86,6 +86,10 @@ public final class RainCollectorBlock extends Block {
                 if (thirst.getThirst() < 20 || thirst.getQuenched() < 20) {
                     thirst.drink(player, 3, 2);
                     WaterPurity.givePurityEffects(player, WaterPurity.getBlockPurity(level, pos));
+                    if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer
+                            && WaterPurity.getBlockPurity(level, pos) == WaterPurity.MAX_PURITY) {
+                        ThreadsBridge.purifiedDrunk(serverPlayer);
+                    }
                     drank[0] = true;
                 }
             });
