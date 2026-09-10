@@ -7,10 +7,10 @@ import net.minecraftforge.event.entity.living.LivingEntityUseItemEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
-/** Observes completion of the native drink action, after the item was actually consumed. */
-public final class WaterThreadEvents {
+/** Observes completion of native thirst and drink actions. */
+public final class WaterSafetyEvents {
     private static final String LAST_THIRST = "WaterSurvivalLastObservedThirst";
-    private WaterThreadEvents() {}
+    private WaterSafetyEvents() {}
 
     @SubscribeEvent
     public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
@@ -20,7 +20,7 @@ public final class WaterThreadEvents {
             int previous = data.contains(LAST_THIRST) ? data.getInt(LAST_THIRST) : 20;
             int current = thirst.getThirst();
             data.putInt(LAST_THIRST, current);
-            if (revealsOnDrop(previous, current)) ThreadsBridge.thirstLost(player);
+            if (revealsOnDrop(previous, current)) WaterSafetyEpisodes.thirstLost(player);
         });
     }
 
@@ -28,7 +28,9 @@ public final class WaterThreadEvents {
     public static void onDrinkFinished(LivingEntityUseItemEvent.Finish event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
         if (!WaterBottleCurio.isWaterBottle(event.getItem())) return;
-        if (isSafePurity(WaterPurity.getPurity(event.getItem()), WaterPurity.MAX_PURITY)) ThreadsBridge.purifiedDrunk(player);
+        if (isSafePurity(WaterPurity.getPurity(event.getItem()), WaterPurity.MAX_PURITY)) {
+            WaterSafetyEpisodes.purifiedDrunk(player);
+        }
     }
 
     static boolean revealsOnDrop(int previous, int current) { return current >= 0 && current < previous; }
