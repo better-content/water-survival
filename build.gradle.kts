@@ -2,7 +2,7 @@ plugins {
     idea
     `maven-publish`
     jacoco
-    id("net.minecraftforge.gradle") version "[6.0.24,6.2)"
+    id("net.minecraftforge.gradle") version "6.0.54"
     id("org.parchmentmc.librarian.forgegradle") version "1.2.0"
 }
 
