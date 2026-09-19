@@ -91,7 +91,7 @@ public final class WaterSurvivalGameTests {
     }
 
     @GameTest(templateNamespace = WaterSurvival.MOD_ID, template = "empty", timeoutTicks = 200)
-    public static void waterCurioTopsOffAndPersistsFractionWithoutBottle(final GameTestHelper helper) {
+    public static void waterCurioKeepsFractionWithOpenedBottleAcrossSwapAndReload(final GameTestHelper helper) {
         final ServerPlayer player = fakePlayer(helper, "fractional-top-off");
         final var thirst = player.getCapability(ModCapabilities.PLAYER_THIRST).resolve()
                 .orElseThrow(() -> new IllegalStateException("Mock player is missing the Thirst capability"));
@@ -104,27 +104,34 @@ public final class WaterSurvivalGameTests {
 
         tickWaterCurio(player);
         helper.assertTrue(thirst.getThirst() == 20, "One missing thirst point should be restored immediately");
-        helper.assertTrue(waterSlot.getStacks().getStackInSlot(0).getCount() == 2,
-                "A one-point top-off should not consume a full bottle");
-        helper.assertTrue(closeTo(WaterBottleCurio.getBottleFraction(player), 1.0D / 6.0D),
-                "The first top-off should persist one sixth of a bottle");
+        helper.assertTrue(waterSlot.getStacks().getStackInSlot(0).getCount() == 1,
+                "An opened bottle must be isolated from sealed stack extras");
+        helper.assertTrue(closeTo(WaterBottleCurio.getBottleFraction(waterSlot.getStacks().getStackInSlot(0)), 1.0D / 6.0D),
+                "The opened bottle should store one sixth of its contents");
 
-        final ItemStack equippedBottles = waterSlot.getStacks().extractItem(0, 2, false);
+        final ItemStack opened = waterSlot.getStacks().extractItem(0, 1, false);
         thirst.setThirst(19);
         tickWaterCurio(player);
         helper.assertTrue(thirst.getThirst() == 19, "An empty water slot must not provide hydration");
-        helper.assertTrue(closeTo(WaterBottleCurio.getBottleFraction(player), 1.0D / 6.0D),
-                "Removing the bottle must not clear fractional progress");
-        waterSlot.getStacks().setStackInSlot(0, equippedBottles);
+        helper.assertTrue(closeTo(WaterBottleCurio.getBottleFraction(opened), 1.0D / 6.0D),
+                "Removing the bottle must carry its fractional progress with it");
+        waterSlot.getStacks().setStackInSlot(0, purifiedWaterBottles(1));
+        tickWaterCurio(player);
+        helper.assertTrue(closeTo(WaterBottleCurio.getBottleFraction(waterSlot.getStacks().getStackInSlot(0)), 1.0D / 6.0D),
+                "A fresh bottle must start at zero even after a partial bottle was removed");
+        final ItemStack fresh = waterSlot.getStacks().extractItem(0, 1, false);
+        helper.assertTrue(closeTo(WaterBottleCurio.getBottleFraction(fresh), 1.0D / 6.0D),
+                "The swapped bottle must keep only its own sip");
+        waterSlot.getStacks().setStackInSlot(0, ItemStack.of(opened.save(new net.minecraft.nbt.CompoundTag())));
 
         for (int use = 0; use < 5; use++) {
             thirst.setThirst(19);
             tickWaterCurio(player);
         }
         helper.assertTrue(thirst.getThirst() == 20, "The sixth partial use should still top off thirst");
-        helper.assertTrue(thirst.getQuenched() == 8, "A complete fractional bottle should restore eight quenched points");
-        helper.assertTrue(waterSlot.getStacks().getStackInSlot(0).getCount() == 1,
-                "Exactly one bottle should be consumed after six one-point top-offs");
+        helper.assertTrue(thirst.getQuenched() == 9, "One completed bottle plus one sip of the swapped bottle should restore nine quenched points");
+        helper.assertTrue(waterSlot.getStacks().getStackInSlot(0).isEmpty(),
+                "Exactly the opened bottle should be consumed after six one-point top-offs");
         final var emptyBottleSlot = CuriosApi.getCuriosInventory(player).resolve()
                 .flatMap(handler -> handler.getStacksHandler(WaterBottleCurio.EMPTY_BOTTLE_SLOT))
                 .orElseThrow(() -> new IllegalStateException("Mock player is missing the empty-bottle Curios slot"));
@@ -133,8 +140,8 @@ public final class WaterSurvivalGameTests {
                 "Completing a fractional bottle should return one empty bottle to its dedicated slot");
         helper.assertTrue(player.getInventory().countItem(Items.GLASS_BOTTLE) == 0,
                 "Returned empty bottles must not spill into normal inventory while the dedicated slot has room");
-        helper.assertTrue(WaterBottleCurio.getBottleFraction(player) == 0.0D,
-                "A completed bottle should reset fractional progress");
+        helper.assertTrue(WaterBottleCurio.getBottleFraction(fresh) == 1.0D / 6.0D,
+                "Completing the original bottle must not change the swapped container");
         helper.succeed();
     }
 
@@ -153,8 +160,6 @@ public final class WaterSurvivalGameTests {
         tickWaterCurio(player);
         helper.assertTrue(thirst.getThirst() == 6, "One equipped bottle should restore only its six thirst points");
         helper.assertTrue(waterSlot.getStacks().getStackInSlot(0).isEmpty(), "The only equipped bottle should be consumed");
-        helper.assertTrue(WaterBottleCurio.getBottleFraction(player) == 0.0D,
-                "No fraction of an unavailable second bottle should be borrowed");
         helper.succeed();
     }
 

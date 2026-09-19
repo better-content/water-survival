@@ -4,10 +4,8 @@ import dev.ghen.thirst.api.ThirstHelper;
 import dev.ghen.thirst.content.purity.WaterPurity;
 import dev.ghen.thirst.foundation.common.capability.ModCapabilities;
 import com.bettercontent.watersurvival.WaterSurvival;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.alchemy.PotionUtils;
@@ -21,7 +19,7 @@ public final class WaterBottleCurio {
     public static final String EMPTY_BOTTLE_SLOT = "empty_bottle";
     public static final ResourceLocation PREDICATE = new ResourceLocation(WaterSurvival.MOD_ID, "water_bottle");
     public static final ResourceLocation EMPTY_BOTTLE_PREDICATE = new ResourceLocation(WaterSurvival.MOD_ID, "empty_bottle");
-    private static final String FRACTION_KEY = "waterBottleFraction";
+    private static final String FRACTION_KEY = "BetterContentSippedFraction";
 
     private WaterBottleCurio() {}
 
@@ -35,8 +33,20 @@ public final class WaterBottleCurio {
         if (event.phase != TickEvent.Phase.END || event.player.level().isClientSide || event.player.tickCount % 10 != 0) return;
         if (!(event.player instanceof ServerPlayer player)) return;
         CuriosApi.getCuriosInventory(player).ifPresent(handler -> handler.getStacksHandler(SLOT).ifPresent(slot -> {
-            ItemStack stack = slot.getStacks().getStackInSlot(0);
-            if (!isWaterBottle(stack) || !ThirstHelper.itemRestoresThirst(stack)) return;
+            ItemStack equipped = slot.getStacks().getStackInSlot(0);
+            if (!isWaterBottle(equipped) || !ThirstHelper.itemRestoresThirst(equipped)) return;
+            // A partially opened bottle must travel as one physical container. If
+            // another mod supplies a stacked potion, separate sealed extras first.
+            if (equipped.getCount() > 1) {
+                ItemStack sealed = equipped.copy();
+                sealed.setCount(equipped.getCount() - 1);
+                clearBottleFraction(sealed);
+                equipped = equipped.copy();
+                equipped.setCount(1);
+                slot.getStacks().setStackInSlot(0, equipped);
+                if (!player.getInventory().add(sealed)) player.drop(sealed, false);
+            }
+            final ItemStack stack = equipped;
             player.getCapability(ModCapabilities.PLAYER_THIRST).ifPresent(thirst -> {
                 final int bottleThirst = Math.max(0, ThirstHelper.getThirst(stack));
                 final int bottleQuenched = Math.max(0, ThirstHelper.getQuenched(stack));
@@ -44,7 +54,7 @@ public final class WaterBottleCurio {
                 if (bottleThirst == 0 || missingThirst == 0) return;
 
                 final ItemStack remainingBottles = stack.copy();
-                double fraction = getBottleFraction(player);
+                double fraction = getBottleFraction(stack);
                 int thirstRestored = 0;
                 int quenchedRestored = 0;
                 int bottlesConsumed = 0;
@@ -73,28 +83,31 @@ public final class WaterBottleCurio {
                     thirst.updateThirstData(player);
                     if (WaterPurity.getPurity(stack) == WaterPurity.MAX_PURITY) WaterSafetyEpisodes.purifiedDrunk(player);
                 }
-                setBottleFraction(player, fraction);
                 if (bottlesConsumed > 0) {
                     slot.getStacks().setStackInSlot(0, remainingBottles);
                     returnEmptyBottles(player, bottlesConsumed);
+                } else if (thirstRestored > 0) {
+                    setBottleFraction(remainingBottles, fraction);
+                    slot.getStacks().setStackInSlot(0, remainingBottles);
                 }
             });
         }));
     }
 
-    static double getBottleFraction(final ServerPlayer player) {
-        final CompoundTag persisted = player.getPersistentData().getCompound(Player.PERSISTED_NBT_TAG);
-        final CompoundTag modData = persisted.getCompound(WaterSurvival.MOD_ID);
-        return WaterBottleConsumption.normalizeFraction(modData.getDouble(FRACTION_KEY));
+    static double getBottleFraction(final ItemStack bottle) {
+        return bottle.hasTag()
+                ? WaterBottleConsumption.normalizeFraction(bottle.getTag().getDouble(FRACTION_KEY))
+                : 0.0D;
     }
 
-    private static void setBottleFraction(final ServerPlayer player, final double fraction) {
-        final CompoundTag root = player.getPersistentData();
-        final CompoundTag persisted = root.getCompound(Player.PERSISTED_NBT_TAG);
-        final CompoundTag modData = persisted.getCompound(WaterSurvival.MOD_ID);
-        modData.putDouble(FRACTION_KEY, WaterBottleConsumption.normalizeFraction(fraction));
-        persisted.put(WaterSurvival.MOD_ID, modData);
-        root.put(Player.PERSISTED_NBT_TAG, persisted);
+    private static void setBottleFraction(final ItemStack bottle, final double fraction) {
+        final double normalized = WaterBottleConsumption.normalizeFraction(fraction);
+        if (normalized == 0.0D) clearBottleFraction(bottle);
+        else bottle.getOrCreateTag().putDouble(FRACTION_KEY, normalized);
+    }
+
+    private static void clearBottleFraction(final ItemStack bottle) {
+        if (bottle.hasTag()) bottle.getTag().remove(FRACTION_KEY);
     }
 
     static void returnEmptyBottles(final ServerPlayer player, final int count) {
